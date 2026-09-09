@@ -657,7 +657,16 @@ void AutoCorrelation(const Word16		 input[],
   isamples = samples;
   /* calc first corrCoef:  R[0] = sum { t[i] * t[i] } ; i = 0..N-1 */
   accu = 0;
-  for(j=0; j<isamples; j++) {
+  j = 0;
+#if defined(__xtensa__)
+  for(; j + 4 <= isamples; j += 4) {
+    accu += (input[j+0] * input[j+0]) >> scf;
+    accu += (input[j+1] * input[j+1]) >> scf;
+    accu += (input[j+2] * input[j+2]) >> scf;
+    accu += (input[j+3] * input[j+3]) >> scf;
+  }
+#endif
+  for(; j<isamples; j++) {
     accu = L_add(accu, ((input[j] * input[j]) >> scf));
   }
   corr[0] = accu;
@@ -669,7 +678,16 @@ void AutoCorrelation(const Word16		 input[],
   for(i=1; i<corrCoeff; i++) {
     isamples = isamples - 1;
     accu = 0;
-    for(j=0; j<isamples; j++) {
+    j = 0;
+#if defined(__xtensa__)
+    for(; j + 4 <= isamples; j += 4) {
+      accu += (input[j+0] * input[j+0+i]) >> scf;
+      accu += (input[j+1] * input[j+1+i]) >> scf;
+      accu += (input[j+2] * input[j+2+i]) >> scf;
+      accu += (input[j+3] * input[j+3+i]) >> scf;
+    }
+#endif
+    for(; j<isamples; j++) {
       accu = L_add(accu, ((input[j] * input[j+i]) >> scf));
     }
     corr[i] = accu;

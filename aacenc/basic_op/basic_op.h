@@ -55,8 +55,13 @@
 #define L_negate(L_var1) (((L_var1) == (MIN_32)) ? (MAX_32) : (-(L_var1)))
 
 
+#if defined(__xtensa__)
+#define MULHIGH(A,B) ((int)(((long long)(A)*(long long)(B)) >> 32))
+#define fixmul(a, b)  (MULHIGH(a, b) << 1)
+#else
 #define MULHIGH(A,B) (int)(((Word64)(A)*(Word64)(B)) >> 32)
 #define fixmul(a, b) (int)((((Word64)(a)*(Word64)(b)) >> 32) << 1)
+#endif
 
 
 #if  (SATRUATE_IS_INLINE)
@@ -299,8 +304,12 @@ __inline Word32 ASM_shl(Word32 L_var1, Word32 var2)
 #if (SATRUATE_IS_INLINE)
 __inline Word32 saturate(Word32 L_var1)
 {
-#if ARMV6_SAT
-    Word32 result;
+#if defined(XTENSA_INASM)
+	Word32 result;
+	asm ("clamps %0, %1, 15" : "=r"(result) : "r"(L_var1));
+	return result;
+#elif ARMV6_SAT
+	Word32 result;
 	asm (
 		"SSAT %[result], #16, %[L_var1]"
 		: [result]"=r"(result)
@@ -431,7 +440,14 @@ __inline Word32 shr (Word32 var1, Word32 var2)
 #if (L_MULT_IS_INLINE)
 __inline Word32 L_mult(Word32 var1, Word32 var2)
 {
-#if ARMV5TE_L_MULT
+#if defined(XTENSA_INASM)
+	Word32 result = (Word32)(Word16)var1 * (Word32)(Word16)var2;
+	if (result != (Word32)0x40000000L)
+		result <<= 1;
+	else
+		result = MAX_32;
+	return result;
+#elif ARMV5TE_L_MULT
 	Word32 result;
 	asm (
 		"SMULBB %[result], %[var1], %[var2] \n"
@@ -654,6 +670,11 @@ __inline Word32 sub(Word32 var1, Word32 var2)
 #if (DIV_S_IS_INLINE)
 __inline Word32 div_s (Word32 var1, Word32 var2)
 {
+#if defined(XTENSA_INASM)
+	if (var1 == var2)
+		return MAX_16;
+	return (Word32)(((Word32)var1 << 15) / var2);
+#else
     Word32 var_out = 0;
     Word32 iteration;
     Word32 L_num;
@@ -682,6 +703,7 @@ __inline Word32 div_s (Word32 var1, Word32 var2)
     	}
     }
     return (var_out);
+#endif
 }
 #endif
 
@@ -689,7 +711,11 @@ __inline Word32 div_s (Word32 var1, Word32 var2)
 #if (MULT_IS_INLINE)
 __inline Word32 mult (Word32 var1, Word32 var2)
 {
-#if ARMV5TE_MULT && ARMV6_SAT
+#if defined(XTENSA_INASM)
+	Word32 result = ((Word32)(Word16)var1 * (Word32)(Word16)var2) >> 15;
+	asm ("clamps %0, %1, 15" : "=r"(result) : "r"(result));
+	return result;
+#elif ARMV5TE_MULT && ARMV6_SAT
 	Word32 result;
 	asm (
 		"SMULBB %[result], %[var1], %[var2] \n"
@@ -731,7 +757,12 @@ __inline Word32 mult (Word32 var1, Word32 var2)
 #if (NORM_S_IS_INLINE)
 __inline Word32 norm_s (Word32 var1)
 {
-#if ARMV5TE_NORM_S
+#if defined(XTENSA_INASM)
+	Word32 result;
+	if (var1 == 0) return 0;
+	asm ("nsa %0, %1" : "=r"(result) : "r"(var1));
+	return result - 16;
+#elif ARMV5TE_NORM_S
 	Word32 result;
 	Word32 tmp;
 	asm (
@@ -781,7 +812,12 @@ __inline Word32 norm_s (Word32 var1)
 #if (NORM_L_IS_INLINE)
 __inline Word32 norm_l (Word32 L_var1)
 {
-#if ARMV5TE_NORM_L
+#if defined(XTENSA_INASM)
+	Word32 result;
+	if (L_var1 == 0) return 0;
+	asm ("nsa %0, %1" : "=r"(result) : "r"(L_var1));
+	return result;
+#elif ARMV5TE_NORM_L
 	Word32 result;
 	asm volatile(
 		"CMP    %[L_var1], #0\n"

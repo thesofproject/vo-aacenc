@@ -41,7 +41,22 @@ void CalcBandEnergy(const Word32 *mdctSpectrum,
 
   for (i=0; i<numBands; i++) {
     Word32 accu = 0;
-    for (j=bandOffset[i]; j<bandOffset[i+1]; j++)
+    Word32 start = bandOffset[i];
+    Word32 end = bandOffset[i+1];
+    j = start;
+#if defined(__xtensa__)
+    for (; j + 4 <= end; j += 4) {
+      Word32 s0 = mdctSpectrum[j+0];
+      Word32 s1 = mdctSpectrum[j+1];
+      Word32 s2 = mdctSpectrum[j+2];
+      Word32 s3 = mdctSpectrum[j+3];
+      accu += MULHIGH(s0, s0);
+      accu += MULHIGH(s1, s1);
+      accu += MULHIGH(s2, s2);
+      accu += MULHIGH(s3, s3);
+    }
+#endif
+    for (; j < end; j++)
       accu = L_add(accu, MULHIGH(mdctSpectrum[j], mdctSpectrum[j]));
 
 	accu = L_add(accu, accu);
@@ -71,11 +86,33 @@ void CalcBandEnergyMS(const Word32 *mdctSpectrumLeft,
   Word32 accuMidSum = 0;
   Word32 accuSideSum = 0;
 
-
   for(i=0; i<numBands; i++) {
     Word32 accuMid = 0;
     Word32 accuSide = 0;
-    for (j=bandOffset[i]; j<bandOffset[i+1]; j++) {
+    Word32 start = bandOffset[i];
+    Word32 end = bandOffset[i+1];
+    j = start;
+#if defined(__xtensa__)
+    for (; j + 4 <= end; j += 4) {
+      Word32 l0 = mdctSpectrumLeft[j+0] >> 1, r0 = mdctSpectrumRight[j+0] >> 1;
+      Word32 l1 = mdctSpectrumLeft[j+1] >> 1, r1 = mdctSpectrumRight[j+1] >> 1;
+      Word32 l2 = mdctSpectrumLeft[j+2] >> 1, r2 = mdctSpectrumRight[j+2] >> 1;
+      Word32 l3 = mdctSpectrumLeft[j+3] >> 1, r3 = mdctSpectrumRight[j+3] >> 1;
+      Word32 m0 = l0 + r0, s0 = l0 - r0;
+      Word32 m1 = l1 + r1, s1 = l1 - r1;
+      Word32 m2 = l2 + r2, s2 = l2 - r2;
+      Word32 m3 = l3 + r3, s3 = l3 - r3;
+      accuMid += MULHIGH(m0, m0);
+      accuSide += MULHIGH(s0, s0);
+      accuMid += MULHIGH(m1, m1);
+      accuSide += MULHIGH(s1, s1);
+      accuMid += MULHIGH(m2, m2);
+      accuSide += MULHIGH(s2, s2);
+      accuMid += MULHIGH(m3, m3);
+      accuSide += MULHIGH(s3, s3);
+    }
+#endif
+    for (; j < end; j++) {
       Word32 specm, specs;
       Word32 l, r;
 

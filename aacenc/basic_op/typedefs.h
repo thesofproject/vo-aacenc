@@ -103,6 +103,10 @@ typedef unsigned __int64 UWord64;
 #define ARMV4_INASM		1
 #endif
 
+#ifdef __xtensa__
+#define XTENSA_INASM		1
+#endif
+
 #if ARMV4_INASM
 	#define ARMV5TE_SAT           1
     #define ARMV5TE_ADD           1
